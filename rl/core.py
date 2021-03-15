@@ -188,8 +188,11 @@ class Agent:
                     if done:
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
-                    # Force a terminal state.
-                    done = True
+                    # Setting done=True will result in wrong learning behavior:
+                    # Terminations that are induced by the agent (like timeouts) should be handled differently than
+                    # terminations that originate from the environment (tasks with a time limit, env destruction).
+                    # This is taken further care of in the memory.py file.
+                    done = "timeout"
                 metrics = self.backward(reward, terminal=done)
                 episode_reward += reward
 

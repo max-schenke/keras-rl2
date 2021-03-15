@@ -162,6 +162,9 @@ class SequentialMemory(Memory):
         experiences = []
         for idx in batch_idxs:
             terminal0 = self.terminals[idx - 2]
+            if terminal0 == "timeout":
+                # The transition from k to k+1 resulted from a reset, so the transition is not valid for learning.
+                terminal0 = True
             while terminal0:
                 # Skip this transition because the environment was reset here. Select a new, random
                 # transition and use this instead. This may cause the batch to contain the same
@@ -188,6 +191,10 @@ class SequentialMemory(Memory):
             action = self.actions[idx - 1]
             reward = self.rewards[idx - 1]
             terminal1 = self.terminals[idx - 1]
+            if terminal1 == "timeout":
+                # The state k+1 was not terminal for the environment, we just wanted to force a reset,
+                # hence the agent should not be permitted to learn that the environment terminated.
+                terminal1 = False
 
             # Okay, now we need to create the follow-up state. This is state0 shifted on timestep
             # to the right. Again, we need to be careful to not include an observation from the next
