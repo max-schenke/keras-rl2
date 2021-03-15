@@ -209,7 +209,7 @@ class Agent:
                 episode_step += 1
                 self.step += 1
 
-                if done:
+                if done or info.get("timelimit_reached", False):
                     # We are in a terminal state but the agent hasn't yet seen it. We therefore
                     # perform one more forward-backward call and simply ignore the action before
                     # resetting the environment. We need to pass in `terminal=False` here since
@@ -365,7 +365,6 @@ class Agent:
                         done = True
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
-
                     info["timelimit_reached"] = True
                 self.backward(reward, terminal=done, info=info)
                 episode_reward += reward
