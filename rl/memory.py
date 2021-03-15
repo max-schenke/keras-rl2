@@ -77,7 +77,7 @@ class Memory:
     def sample(self, batch_size, batch_idxs=None):
         raise NotImplementedError()
 
-    def append(self, observation, action, reward, terminal, training=True):
+    def append(self, observation, action, reward, terminal, info, training=True):
         self.recent_observations.append(observation)
         self.recent_terminals.append(terminal)
 
@@ -131,6 +131,7 @@ class SequentialMemory(Memory):
         self.rewards = deque(maxlen=limit)
         self.terminals = deque(maxlen=limit)
         self.observations = deque(maxlen=limit)
+        self.infos = deque(maxlen=limit)
 
     def sample(self, batch_size, batch_idxs=None):
         """Return a randomized batch of experiences
@@ -162,7 +163,8 @@ class SequentialMemory(Memory):
         experiences = []
         for idx in batch_idxs:
             terminal0 = self.terminals[idx - 2]
-            if terminal0 == "timeout":
+            timeout0 = self.infos[idx - 2].get("timelimit_reached", False)
+            if timeout0:
                 # The transition from k to k+1 resulted from a reset, so the transition is not valid for learning.
                 terminal0 = True
             while terminal0:
@@ -171,6 +173,10 @@ class SequentialMemory(Memory):
                 # transition twice.
                 idx = sample_batch_indexes(self.window_length + 1, self.nb_entries, size=1)[0]
                 terminal0 = self.terminals[idx - 2]
+                timeout0 = self.infos[idx - 2].get("timelimit_reached", False)
+                if timeout0:
+                    # The transition from k to k+1 resulted from a reset, so the transition is not valid for learning.
+                    terminal0 = True
             assert self.window_length + 1 <= idx < self.nb_entries
 
             # This code is slightly complicated by the fact that subsequent observations might be
@@ -191,7 +197,8 @@ class SequentialMemory(Memory):
             action = self.actions[idx - 1]
             reward = self.rewards[idx - 1]
             terminal1 = self.terminals[idx - 1]
-            if terminal1 == "timeout":
+            timeout1 = self.infos[idx - 1].get("timelimit_reached", False)
+            if timeout1 and not terminal1:
                 # The state k+1 was not terminal for the environment, we just wanted to force a reset,
                 # hence the agent should not be permitted to learn that the environment terminated.
                 terminal1 = False
@@ -209,7 +216,7 @@ class SequentialMemory(Memory):
         assert len(experiences) == batch_size
         return experiences
 
-    def append(self, observation, action, reward, terminal, training=True):
+    def append(self, observation, action, reward, terminal, info, training=True):
         """Append an observation to the memory
 
         # Argument
@@ -218,7 +225,7 @@ class SequentialMemory(Memory):
             reward (float): Reward obtained by taking this action
             terminal (boolean): Is the state terminal
         """ 
-        super().append(observation, action, reward, terminal, training=training)
+        super().append(observation, action, reward, terminal, info, training=training)
         
         # This needs to be understood as follows: in `observation`, take `action`, obtain `reward`
         # and weather the next state is `terminal` or not.
@@ -227,6 +234,7 @@ class SequentialMemory(Memory):
             self.actions.append(action)
             self.rewards.append(reward)
             self.terminals.append(terminal)
+            self.infos.append(info)
 
     @property
     def nb_entries(self):
