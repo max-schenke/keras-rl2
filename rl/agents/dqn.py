@@ -233,10 +233,10 @@ class DQNAgent(AbstractDQNAgent):
 
         return action
 
-    def backward(self, reward, terminal):
+    def backward(self, reward, terminal, info):
         # Store most recent experience in memory.
         if self.step % self.memory_interval == 0:
-            self.memory.append(self.recent_observation, self.recent_action, reward, terminal,
+            self.memory.append(self.recent_observation, self.recent_action, reward, terminal, info,
                                training=self.training)
 
         metrics = [np.nan for _ in self.metrics_names]

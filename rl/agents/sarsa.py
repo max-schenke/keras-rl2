@@ -128,7 +128,7 @@ class SARSAAgent(Agent):
 
         return action
 
-    def backward(self, reward, terminal):
+    def backward(self, reward, terminal, info):
         metrics = [np.nan for _ in self.metrics_names]
         if not self.training:
             # We're done here. No need to update the experience memory since we only use the working
