@@ -339,7 +339,7 @@ class Agent:
 
             # Run the episode until we're done.
             done = False
-            while not done and not info["timelimit_reached"]:
+            while not done:
                 callbacks.on_step_begin(episode_step)
 
                 action = self.forward(observation)
@@ -365,7 +365,9 @@ class Agent:
                         done = True
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
-                    info["timelimit_reached"] = True
+                    # Training is not happening during testing, hence there is no need to differentiate done and
+                    # timeout termination.
+                    done = True
                 self.backward(reward, terminal=done, info=info)
                 episode_reward += reward
 
