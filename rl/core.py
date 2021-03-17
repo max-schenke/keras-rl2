@@ -339,7 +339,7 @@ class Agent:
 
             # Run the episode until we're done.
             done = False
-            while not done:
+            while not done and not info["timelimit_reached"]:
                 callbacks.on_step_begin(episode_step)
 
                 action = self.forward(observation)
