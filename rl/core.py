@@ -188,9 +188,13 @@ class Agent:
                     if done:
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
-                    # Force a terminal state.
-                    done = True
-                metrics = self.backward(reward, terminal=done)
+                    # Setting done=True will result in wrong learning behavior:
+                    # Terminations that are induced by the agent (like timeouts) should be handled differently than
+                    # terminations that originate from the environment (tasks with time limit, env destruction).
+                    # This is taken further care of in the memory.py file.
+                   info["timelimit_reached"] = True
+
+                metrics = self.backward(reward, terminal=done, info=info)
                 episode_reward += reward
 
                 step_logs = {
@@ -205,14 +209,14 @@ class Agent:
                 episode_step += 1
                 self.step += 1
 
-                if done:
+                if done or info.get("timelimit_reached", False):
                     # We are in a terminal state but the agent hasn't yet seen it. We therefore
                     # perform one more forward-backward call and simply ignore the action before
                     # resetting the environment. We need to pass in `terminal=False` here since
                     # the *next* state, that is the state of the newly reset environment, is
                     # always non-terminal by convention.
                     self.forward(observation)
-                    self.backward(0., terminal=False)
+                    self.backward(0., terminal=False, info={})
 
                     # This episode is finished, report and reset.
                     episode_logs = {
@@ -361,8 +365,10 @@ class Agent:
                         done = True
                         break
                 if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
+                    # Training is not happening during testing, hence there is no need to differentiate done and
+                    # timeout termination.
                     done = True
-                self.backward(reward, terminal=done)
+                self.backward(reward, terminal=done, info=info)
                 episode_reward += reward
 
                 step_logs = {
@@ -382,7 +388,7 @@ class Agent:
             # the *next* state, that is the state of the newly reset environment, is
             # always non-terminal by convention.
             self.forward(observation)
-            self.backward(0., terminal=False)
+            self.backward(0., terminal=False, info={})
 
             # Report end of episode.
             episode_logs = {
@@ -412,13 +418,14 @@ class Agent:
         """
         raise NotImplementedError()
 
-    def backward(self, reward, terminal):
+    def backward(self, reward, terminal, info):
         """Updates the agent after having executed the action returned by `forward`.
         If the policy is implemented by a neural network, this corresponds to a weight update using back-prop.
 
         # Argument
             reward (float): The observed reward after executing the action returned by `forward`.
             terminal (boolean): `True` if the new state of the environment is terminal.
+            info (dict): Dictionary of miscellaneous data that is to be logged.
 
         # Returns
             List of metrics values
